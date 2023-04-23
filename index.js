@@ -18,7 +18,7 @@ const enemy = new Enemy("rock", "common");
 enemies.push(enemy);
 
 io.on('connection', (socket) => {
-    socket.on('update', (player, petal) => {
+    socket.on('update', (player) => {
         players[socket.id] = player;
         io.emit('update', { players });
         io.emit('enemies', enemies);
@@ -37,16 +37,20 @@ io.on('connection', (socket) => {
     });
 
     socket.on('addPetal', (petalData) => {
-        const petal = new Petal(petalData.name, petalData.rarity, petalData.index, petalData.listlength, petalData.player)
+        const petal = new Petal(petalData.name, petalData.rarity, petalData.index, petalData.listlength, petalData.playerid)
         petals.push(petal);
         io.emit('petals', petals);
     });
 
     socket.on('removePetal', (petal) => {
         const index = petals.indexOf(petal);
+        console.log(petal)
+        console.log(petals)
         if (index > -1) {
             petals.splice(index, 1);
+            console.log("deleting")
         }
+        // console.log(petals)
         io.emit('petals', petals);
     });
 });

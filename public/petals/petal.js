@@ -2,7 +2,7 @@ const petallist = require("./petallist.js")
 const { Image } = require('canvas');
 
 class Petal {
-    constructor(name, rarity, spriteIndex, listLength, player) {
+    constructor(name, rarity, spriteIndex, listLength, playerid) {
         this.x = 0
         this.y = 0
 
@@ -64,7 +64,7 @@ class Petal {
         this.spriteIndex = spriteIndex;
         this.listLength = listLength;
 
-        this.player = player
+        this.playerid = playerid
     }
 
     draw(ctx) {
@@ -84,13 +84,13 @@ class Petal {
     }
 
     update(players) {
-        let player = players[this.player.id]
-        this.angle += this.petalspeed;
-        let x = player.x + Math.cos(this.angle + 2 * Math.PI * this.spriteIndex / this.listLength) * this.petalRadius;
-        let y = player.y + Math.sin(this.angle + 2 * Math.PI * this.spriteIndex / this.listLength) * this.petalRadius;
-        this.x = x
-        this.y = y
-        this.rotation = this.angle * 180 / Math.PI
+        // let player = players[this.playerid]
+        // this.angle += this.petalspeed;
+        // let x = player.x + Math.cos(this.angle + 2 * Math.PI * this.spriteIndex / this.listLength) * this.petalRadius;
+        // let y = player.y + Math.sin(this.angle + 2 * Math.PI * this.spriteIndex / this.listLength) * this.petalRadius;
+        // this.x = x
+        // this.y = y
+        // this.rotation = this.angle * 180 / Math.PI
     }
 }
 

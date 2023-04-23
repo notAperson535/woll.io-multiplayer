@@ -39,10 +39,16 @@ socket.on('connect', () => {
             players[id] = player;
         }
 
-        // Remove disconnected players
         const playerIds = Object.keys(players);
         const disconnectedPlayers = playerIds.filter(id => !state.players[id]);
-        disconnectedPlayers.forEach(id => delete players[id]);
+        disconnectedPlayers.forEach(id => {
+            delete players[id]
+            petals.forEach(petal => {
+                if (petal.playerid == id) {
+                    socket.emit("removePetal", petal)
+                }
+            })
+        });
     })
 })
 
@@ -50,7 +56,7 @@ function checkFlag() {
     if (player.id === null) {
         window.setTimeout(checkFlag, 1);
     } else {
-        localpetals = localpetals.map((data, index) => ({ ...data, index: index, listlength: localpetals.length, player: player }))
+        localpetals = localpetals.map((data, index) => ({ ...data, index: index, listlength: localpetals.length, playerid: player.id }))
         localpetals.forEach(petal => {
             socket.emit("addPetal", petal)
         })
@@ -110,7 +116,7 @@ function movePlayer() {
         player.x += normalizedVector.x * player.speed
         player.y += normalizedVector.y * player.speed
         petals.forEach(petal => {
-            if (petal.player.id === player.id) {
+            if (petal.playerid === player.id) {
                 petal.x += normalizedVector.x * player.speed
                 petal.y += normalizedVector.y * player.speed
             }
