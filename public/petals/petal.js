@@ -66,32 +66,6 @@ class Petal {
 
         this.playerid = playerid
     }
-
-    draw(ctx) {
-        let sprite = new Image()
-        sprite.src = this.img
-        ctx.save()
-        // ctx.rotate(this.rotation)
-        ctx.translate(-camera.x, -camera.y)
-        ctx.drawImage(sprite, this.x - this.width / 2, this.y - this.height / 2, this.width, this.height)
-        ctx.restore()
-        this.angle += this.petalspeed;
-        let x = this.player.x + Math.cos(this.angle + 2 * Math.PI * this.spriteIndex / this.listLength) * this.petalRadius;
-        let y = this.player.y + Math.sin(this.angle + 2 * Math.PI * this.spriteIndex / this.listLength) * this.petalRadius;
-        this.x = x
-        this.y = y
-        this.rotation = this.angle * 180 / Math.PI
-    }
-
-    update(players) {
-        // let player = players[this.playerid]
-        // this.angle += this.petalspeed;
-        // let x = player.x + Math.cos(this.angle + 2 * Math.PI * this.spriteIndex / this.listLength) * this.petalRadius;
-        // let y = player.y + Math.sin(this.angle + 2 * Math.PI * this.spriteIndex / this.listLength) * this.petalRadius;
-        // this.x = x
-        // this.y = y
-        // this.rotation = this.angle * 180 / Math.PI
-    }
 }
 
 module.exports = Petal

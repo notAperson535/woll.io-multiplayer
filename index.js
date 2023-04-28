@@ -22,17 +22,22 @@ io.on('connection', (socket) => {
         players[socket.id] = player;
         io.emit('update', { players });
         io.emit('enemies', enemies);
-        petals.forEach(petal => {
-            petal.update(players)
-        })
+        // petals.forEach(petal => {
+        //     petal.update(players)
+        // })
         enemies.forEach(enemy => {
             enemy.update()
         })
-        io.emit('petals', petals);
+        // io.emit('petals', petals);
     });
 
     socket.on('disconnect', () => {
         delete players[socket.id];
+        petals.forEach(petal => {
+            if (petal.playerid == socket.id) {
+                petals.splice(petals.indexOf(petal), 1);
+            }
+        })
         io.emit('update', { players });
     });
 
@@ -42,15 +47,12 @@ io.on('connection', (socket) => {
         io.emit('petals', petals);
     });
 
-    socket.on('removePetal', (petal) => {
-        const index = petals.indexOf(petal);
-        console.log(petal)
-        console.log(petals)
-        if (index > -1) {
-            petals.splice(index, 1);
-            console.log("deleting")
-        }
-        // console.log(petals)
+    socket.on('removePetalsWithId', (id) => {
+        petals.forEach(petal => {
+            if (petal.playerid == id) {
+                petals.splice(petals.indexOf(petal), 1);
+            }
+        })
         io.emit('petals', petals);
     });
 });

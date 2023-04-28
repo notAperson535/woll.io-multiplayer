@@ -43,11 +43,7 @@ socket.on('connect', () => {
         const disconnectedPlayers = playerIds.filter(id => !state.players[id]);
         disconnectedPlayers.forEach(id => {
             delete players[id]
-            petals.forEach(petal => {
-                if (petal.playerid == id) {
-                    socket.emit("removePetal", petal)
-                }
-            })
+            socket.emit("removePetalsWithId", id)
         });
     })
 })
@@ -159,20 +155,29 @@ function handleKeyUp(event) {
 function gameLoop() {
     ctx.clearRect(0, 0, canvas.width, canvas.height)
 
+    requestAnimationFrame(gameLoop)
+}
+
+function playerLoop() {
+    socket.emit('update', player)
+
+    drawPlayers()
     movePlayer()
 
     // follow(player)
+    requestAnimationFrame(playerLoop)
+}
 
-    drawPlayers()
-    drawPetals()
+function enemyLoop() {
     drawEnemies()
+    // updateEnemies()
+    requestAnimationFrame(enemyLoop)
+}
 
-    socket.emit('update', player)
-
-    const canvasDataUrl = canvas.toDataURL();
-    socket.emit('canvas', canvasDataUrl);
-
-    requestAnimationFrame(gameLoop)
+function petalLoop() {
+    drawPetals()
+    updatePetals()
+    requestAnimationFrame(petalLoop)
 }
 
 document.addEventListener('keydown', handleKeyDown)
@@ -210,5 +215,24 @@ function drawPetals() {
     })
 }
 
+function updatePetals() {
+    petals.forEach(petal => {
+        let player = players[petal.playerid]
+        petal.angle += petal.petalspeed;
+        if (player == undefined) {
+            socket.emit("removePetalsWithId", petal.playerid)
+            return;
+        }
+        let x = player.x + Math.cos(petal.angle + 2 * Math.PI * petal.spriteIndex / petal.listLength) * petal.petalRadius;
+        let y = player.y + Math.sin(petal.angle + 2 * Math.PI * petal.spriteIndex / petal.listLength) * petal.petalRadius;
+        petal.x = x
+        petal.y = y
+        petal.rotation = petal.angle * 180 / Math.PI
+    })
+}
+
 gameLoop()
+playerLoop()
+enemyLoop()
+petalLoop()
 // follow(player)
