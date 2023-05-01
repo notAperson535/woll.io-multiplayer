@@ -1,12 +1,18 @@
+import { drawBackground } from './background.js'
+
 const canvas = document.getElementById('game-canvas')
 const ctx = canvas.getContext('2d')
 canvas.width = window.innerWidth
 canvas.height = window.innerHeight
 
+export let wallthickness = 2
+export let playingwidth = 20
+export let playingheight = 10
+
 const player = {
     id: null,
-    x: 0,
-    y: 0,
+    x: wallthickness * 512 - 256 + rand(0, 512),
+    y: wallthickness * 512 - 256 + rand(0, playingheight * 512),
     width: 40,
     height: 40,
     speed: 5,
@@ -60,7 +66,7 @@ function checkFlag() {
 }
 checkFlag();
 
-let camera = {
+export let camera = {
     x: 0,
     y: 0,
 }
@@ -118,6 +124,22 @@ function movePlayer() {
             }
         })
 
+        if (player.x - player.width / 2 < wallthickness * 512 - 256) {
+            player.x = wallthickness * 512 - 256 + player.width / 2
+        }
+
+        if (player.y - player.height / 2 < wallthickness * 512 - 256) {
+            player.y = wallthickness * 512 - 256 + player.height / 2
+        }
+
+        if (player.x > (wallthickness + playingwidth) * 512 - 256) {
+            player.x = (wallthickness + playingwidth) * 512 - 256 - player.width / 2
+        }
+
+        if (player.y > (wallthickness + playingheight) * 512 - 256) {
+            player.y = (wallthickness + playingheight) * 512 - 256 - player.height / 2
+        }
+
         socket.emit('update', player)
     }
 }
@@ -152,10 +174,27 @@ function handleKeyUp(event) {
     }
 }
 
+export function isColliding(first, second) {
+    if (first.x - first.width / 2 < second.x + second.width / 2 && first.x + first.width / 2 > second.x - second.width / 2 &&
+        first.y - first.height / 2 < second.y + second.height / 2 && first.y + first.height / 2 > second.y - second.height / 2) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+export function rand(min, max) {
+    return Math.floor(Math.random() * (max - min + 1) + min)
+}
+
 function gameLoop() {
     ctx.clearRect(0, 0, canvas.width, canvas.height)
-
     requestAnimationFrame(gameLoop)
+}
+
+function backgroundLoop() {
+    drawBackground(ctx, canvas.width, canvas.height, player)
+    requestAnimationFrame(backgroundLoop)
 }
 
 function playerLoop() {
@@ -164,7 +203,7 @@ function playerLoop() {
     drawPlayers()
     movePlayer()
 
-    // follow(player)
+    follow(player)
     requestAnimationFrame(playerLoop)
 }
 
@@ -232,6 +271,7 @@ function updatePetals() {
 }
 
 gameLoop()
+backgroundLoop()
 playerLoop()
 enemyLoop()
 petalLoop()
