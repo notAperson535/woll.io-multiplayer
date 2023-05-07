@@ -5,21 +5,24 @@ const ctx = canvas.getContext('2d')
 canvas.width = window.innerWidth
 canvas.height = window.innerHeight
 
-export let wallthickness = 2
+export let wallthickness = 5
 export let playingwidth = 20
 export let playingheight = 10
 
+let playersidelength = 40
+
 const player = {
     id: null,
-    x: wallthickness * 512 - 256 + rand(0, 512),
-    y: wallthickness * 512 - 256 + rand(0, playingheight * 512),
-    width: 40,
-    height: 40,
+    x: wallthickness * 512 - 256 + playersidelength / 2 + rand(0, 512 - playersidelength / 2),
+    y: wallthickness * 512 - 256 + playersidelength / 2 + rand(0, playingheight * 512 - playersidelength / 2),
+    width: playersidelength,
+    height: playersidelength,
     speed: 5,
     movingLeft: false,
     movingRight: false,
     movingUp: false,
-    movingDown: false
+    movingDown: false,
+    petalRadius: 50
 }
 
 export const players = {}
@@ -30,29 +33,44 @@ let localpetals = [
     { rarity: "common", name: "rock" },
     { rarity: "common", name: "rock" },
     { rarity: "common", name: "rock" },
+    { rarity: "common", name: "rock" },
 ]
 
-const socket = io()
+// const socket = io()
+const socket = new WebSocket("ws://localhost:3000");
 
-socket.on('connect', () => {
-    player.id = socket.id
+socket.addEventListener("open", () => {
+    player.id = socket.readyState === WebSocket.OPEN ? socket._id : null;
 
-    players[player.id] = player
+    players[player.id] = player;
 
-    socket.on('update', (state) => {
-        // Merge the new game state with the local game state
-        for (const [id, player] of Object.entries(state.players)) {
-            players[id] = player;
-        }
+    gameLoop()
+    backgroundLoop()
+    playerLoop()
+    enemyLoop()
+    petalLoop()
+});
 
-        const playerIds = Object.keys(players);
-        const disconnectedPlayers = playerIds.filter(id => !state.players[id]);
-        disconnectedPlayers.forEach(id => {
-            delete players[id]
-            socket.emit("removePetalsWithId", id)
-        });
-    })
-})
+socket.addEventListener("update", (event) => {
+    const state = JSON.parse(event.data);
+
+    // Merge the new game state with the local game state
+    for (const [id, player] of Object.entries(state.players)) {
+        players[id] = player;
+    }
+
+    const playerIds = Object.keys(players);
+    const disconnectedPlayers = playerIds.filter((id) => !state.players[id]);
+    disconnectedPlayers.forEach((id) => {
+        delete players[id];
+        const message = {
+            type: 'removePetalsWithId',
+            data: petal.playerid
+        };
+        socket.send(JSON.stringify(message))
+    });
+});
+
 
 function checkFlag() {
     if (player.id === null) {
@@ -60,7 +78,11 @@ function checkFlag() {
     } else {
         localpetals = localpetals.map((data, index) => ({ ...data, index: index, listlength: localpetals.length, playerid: player.id }))
         localpetals.forEach(petal => {
-            socket.emit("addPetal", petal)
+            const message = {
+                type: 'addPetal',
+                data: petal
+            };
+            socket.send(JSON.stringify(message))
         })
     }
 }
@@ -132,15 +154,14 @@ function movePlayer() {
             player.y = wallthickness * 512 - 256 + player.height / 2
         }
 
-        if (player.x > (wallthickness + playingwidth) * 512 - 256) {
+        if (player.x + player.width / 2 > (wallthickness + playingwidth) * 512 - 256) {
             player.x = (wallthickness + playingwidth) * 512 - 256 - player.width / 2
         }
-
-        if (player.y > (wallthickness + playingheight) * 512 - 256) {
+        if (player.y + player.height / 2 > (wallthickness + playingheight) * 512 - 256) {
             player.y = (wallthickness + playingheight) * 512 - 256 - player.height / 2
         }
 
-        socket.emit('update', player)
+        // socket.emit('update', player)
     }
 }
 
@@ -157,6 +178,9 @@ function handleKeyDown(event) {
     if (event.keyCode === 83) {
         player.movingDown = true
     }
+    if (event.keyCode === 32) {
+        player.petalRadius = 75
+    }
 }
 
 function handleKeyUp(event) {
@@ -171,6 +195,9 @@ function handleKeyUp(event) {
     }
     if (event.keyCode === 83) {
         player.movingDown = false
+    }
+    if (event.keyCode === 32) {
+        player.petalRadius = 50
     }
 }
 
@@ -198,7 +225,11 @@ function backgroundLoop() {
 }
 
 function playerLoop() {
-    socket.emit('update', player)
+    const message = {
+        type: 'update',
+        data: player
+    };
+    socket.send(JSON.stringify(message))
 
     drawPlayers()
     movePlayer()
@@ -222,23 +253,25 @@ function petalLoop() {
 document.addEventListener('keydown', handleKeyDown)
 document.addEventListener('keyup', handleKeyUp)
 
-socket.on('enemies', (enemyData) => {
+socket.addEventListener('enemies', (enemyData) => {
     enemies = enemyData
 });
 
-socket.on('petals', (petalData) => {
+socket.addEventListener('petals', (petalData) => {
     petals = petalData
 });
 
 function drawEnemies() {
     enemies.forEach(enemy => {
-        let sprite = new Image()
-        sprite.src = enemy.img
-        ctx.save()
-        ctx.translate(-camera.x, -camera.y)
-        ctx.rotate(enemy.rotation)
-        ctx.drawImage(sprite, enemy.x - enemy.width / 2, enemy.y - enemy.height / 2, enemy.width, enemy.height)
-        ctx.restore()
+        if (enemy.x + enemy.width / 2 >= player.x - canvas.width / 2 && enemy.x - enemy.width / 2 <= player.x + canvas.width / 2 || enemy.y + enemy.height / 2 >= player.y - canvas.height / 2 && enemy.y - enemy.height / 2 <= player.y + canvas.height / 2) {
+            let sprite = new Image()
+            sprite.src = enemy.img
+            ctx.save()
+            ctx.translate(-camera.x, -camera.y)
+            ctx.rotate(enemy.rotation)
+            ctx.drawImage(sprite, enemy.x - enemy.width / 2, enemy.y - enemy.height / 2, enemy.width, enemy.height)
+            ctx.restore()
+        }
     })
 }
 
@@ -259,20 +292,19 @@ function updatePetals() {
         let player = players[petal.playerid]
         petal.angle += petal.petalspeed;
         if (player == undefined) {
-            socket.emit("removePetalsWithId", petal.playerid)
+            const message = {
+                type: 'removePetalsWithId',
+                data: petal.playerid
+            };
+            socket.send(JSON.stringify(message))
             return;
         }
-        let x = player.x + Math.cos(petal.angle + 2 * Math.PI * petal.spriteIndex / petal.listLength) * petal.petalRadius;
-        let y = player.y + Math.sin(petal.angle + 2 * Math.PI * petal.spriteIndex / petal.listLength) * petal.petalRadius;
+        let x = player.x + Math.cos(petal.angle + 2 * Math.PI * petal.spriteIndex / petal.listLength) * player.petalRadius;
+        let y = player.y + Math.sin(petal.angle + 2 * Math.PI * petal.spriteIndex / petal.listLength) * player.petalRadius;
         petal.x = x
         petal.y = y
         petal.rotation = petal.angle * 180 / Math.PI
     })
 }
 
-gameLoop()
-backgroundLoop()
-playerLoop()
-enemyLoop()
-petalLoop()
 // follow(player)

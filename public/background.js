@@ -14,20 +14,27 @@ export function drawBackground(ctx, canvaswidth, canvasheight, player) {
         }
     }
 
-    for (var i = 0; i < wallthickness + playingheight + wallthickness; i++) {
-        for (var j = 0; j < wallthickness + playingwidth + wallthickness; j++) {
-            drawTexture(j * 512, i * 512, "/sprites/textures/wall.svg", true)
+    for (var i = 0; i < wallthickness; i++) {
+        for (var j = 0; j < wallthickness + playingheight + wallthickness; j++) {
+            drawTexture(i * sidelength, j * sidelength, "/sprites/textures/wall.svg", true)
         }
     }
-    for (var i = wallthickness; i < wallthickness + playingheight; i++) {
+
+    for (var i = wallthickness; i < wallthickness + playingwidth; i++) {
         for (var j = 0; j < wallthickness; j++) {
-            drawTexture(i * 512, j * 512, "/sprites/textures/wall.svg", true)
+            drawTexture(i * sidelength, j * sidelength, "/sprites/textures/wall.svg", true)
         }
-        for (var j = wallthickness; j < playingwidth + wallthickness; j++) {
-            drawTexture(i * 512, j * 512, "/sprites/textures/grass.svg", false)
+        for (var j = wallthickness; j < playingheight + wallthickness; j++) {
+            drawTexture(i * sidelength, j * sidelength, "/sprites/textures/grass.svg", false)
         }
-        for (var j = wallthickness + playingwidth; j < wallthickness + wallthickness + playingwidth; j++) {
-            drawTexture(i * 512, j * 512, "/sprites/textures/wall.svg", true)
+        for (var j = wallthickness + playingheight; j < wallthickness + wallthickness + playingwidth; j++) {
+            drawTexture(i * sidelength, j * sidelength, "/sprites/textures/wall.svg", true)
+        }
+    }
+
+    for (var i = wallthickness + playingwidth; i < wallthickness + playingwidth + wallthickness; i++) {
+        for (var j = 0; j < wallthickness + playingheight + wallthickness; j++) {
+            drawTexture(i * sidelength, j * sidelength, "/sprites/textures/wall.svg", true)
         }
     }
 }

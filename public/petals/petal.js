@@ -1,5 +1,4 @@
 const petallist = require("./petallist.js")
-const { Image } = require('canvas');
 
 class Petal {
     constructor(name, rarity, spriteIndex, listLength, playerid) {
@@ -46,6 +45,7 @@ class Petal {
         }
 
         this.petalInfo = petallist.find(t => t.name === name);
+
         this.petalHealth = this.petalInfo.basehealth * healthmultiplier
         this.petalDamage = this.petalInfo.basedamage * damagemultiplier
 
@@ -54,8 +54,6 @@ class Petal {
 
         this.img = this.petalInfo.img
         this.rotation = 0
-
-        this.petalRadius = 50
 
         this.rotation = 0
         this.angle = 0;

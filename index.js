@@ -1,11 +1,49 @@
-const express = require('express');
-const app = express();
-const http = require('http').Server(app);
-const io = require('socket.io')(http);
+const http = require('http');
+const fs = require('fs');
+const path = require('path');
+const WebSocket = require('ws');
 
-const port = 3000;
+const PORT = process.env.PORT || 3000;
 
-app.use(express.static(__dirname + '/public'));
+const server = http.createServer((req, res) => {
+    if (req.url === '/') {
+        fs.readFile(path.join(__dirname, 'public', 'index.html'), (err, content) => {
+            if (err) {
+                throw err;
+            }
+            res.setHeader('Content-Type', 'text/html');
+            res.end(content);
+        });
+    } else {
+        const filePath = path.join(__dirname, 'public', req.url);
+        fs.readFile(filePath, (err, content) => {
+            if (err) {
+                res.writeHead(404);
+                res.end('File not found');
+            } else {
+                const ext = path.extname(filePath);
+                let contentType = 'text/html';
+                switch (ext) {
+                    case '.js':
+                        contentType = 'application/javascript';
+                        break;
+                    case '.css':
+                        contentType = 'text/css';
+                        break;
+                    case '.png':
+                        contentType = 'image/png';
+                        break;
+                    case '.svg':
+                        contentType = 'image/svg+xml';
+                        break;
+                }
+                res.setHeader('Content-Type', contentType);
+                res.end(content);
+            }
+        });
+    }
+});
+const wss = new WebSocket.Server({ server });
 
 const players = {}
 const enemies = [];
@@ -14,49 +52,61 @@ const petals = [];
 const Enemy = require("./public/enemies/enemy.js");
 const Petal = require("./public/petals/petal.js");
 
-const enemy = new Enemy("rock", "common");
-enemies.push(enemy);
+wss.on('connection', (ws) => {
+    ws.on('message', (message) => {
+        const originaldata = JSON.parse(message);
+        const data = originaldata.data
 
-io.on('connection', (socket) => {
-    socket.on('update', (player) => {
-        players[socket.id] = player;
-        io.emit('update', { players });
-        io.emit('enemies', enemies);
-        // petals.forEach(petal => {
-        //     petal.update(players)
-        // })
-        enemies.forEach(enemy => {
-            enemy.update()
-        })
-        // io.emit('petals', petals);
+        switch (originaldata.type) {
+            case 'update':
+                players[ws.id] = data;
+                broadcast({ type: 'update', players });
+                broadcast({ type: 'enemies', enemies });
+                enemies.forEach(enemy => enemy.update());
+                break;
+            case 'addPetal':
+                const petal = new Petal(data.name, data.rarity, data.index, data.listlength, data.playerid)
+                petals.push(petal);
+                broadcast({ type: 'petals', petals });
+                break;
+            case 'removePetalsWithId':
+                petals.forEach(petal => {
+                    if (petal.playerid === data) {
+                        petals.splice(petals.indexOf(petal), 1);
+                    }
+                })
+                broadcast({ type: 'petals', petals });
+                break;
+            case 'disconnect':
+                delete players[ws.id];
+                petals.forEach(petal => {
+                    if (petal.playerid == ws.id) {
+                        petals.splice(petals.indexOf(petal), 1);
+                    }
+                })
+                broadcast({ type: 'update', players });
+                break;
+            default:
+                console.log('Received unsupported message type:', data.type);
+        }
     });
 
-    socket.on('disconnect', () => {
-        delete players[socket.id];
-        petals.forEach(petal => {
-            if (petal.playerid == socket.id) {
-                petals.splice(petals.indexOf(petal), 1);
+    function broadcast(data) {
+        wss.clients.forEach((client) => {
+            if (client.readyState === WebSocket.OPEN) {
+                client.send(JSON.stringify(data));
             }
-        })
-        io.emit('update', { players });
-    });
-
-    socket.on('addPetal', (petalData) => {
-        const petal = new Petal(petalData.name, petalData.rarity, petalData.index, petalData.listlength, petalData.playerid)
-        petals.push(petal);
-        io.emit('petals', petals);
-    });
-
-    socket.on('removePetalsWithId', (id) => {
-        petals.forEach(petal => {
-            if (petal.playerid == id) {
-                petals.splice(petals.indexOf(petal), 1);
-            }
-        })
-        io.emit('petals', petals);
-    });
+        });
+    }
 });
 
-http.listen(port, () => {
-    console.log(`Server listening on port ${port}`);
-});
+function createEnemies() {
+    if (enemies.length < 100) {
+        const enemy = new Enemy("rock", "common");
+        enemies.push(enemy);
+        setTimeout(createEnemies, 1000)
+    }
+}
+
+createEnemies()
+server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
