@@ -2,6 +2,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const WebSocket = require('ws');
+const CircularJSON = require('circular-json');
 
 const PORT = process.env.PORT || 3000;
 
@@ -45,7 +46,7 @@ const server = http.createServer((req, res) => {
 });
 const wss = new WebSocket.Server({ server });
 
-const players = {}
+const players = []
 const enemies = [];
 const petals = [];
 
@@ -59,15 +60,26 @@ wss.on('connection', (ws) => {
 
         switch (originaldata.type) {
             case 'update':
-                players[ws.id] = data;
+                const index = players.findIndex(t => t.id === data.id);
+                if (index !== -1) {
+                    players[index] = data;
+                }
+                petals.forEach(petal => petal.update(players, enemies))
+                enemies.forEach(enemy => enemy.update(players, petals))
                 broadcast({ type: 'update', players });
                 broadcast({ type: 'enemies', enemies });
-                enemies.forEach(enemy => enemy.update());
+                broadcast({ type: 'petals', petals });
+                break;
+            case 'addPlayer':
+                players.push(data)
+                break;
+            case 'removePlayer':
+                //fill this out
                 break;
             case 'addPetal':
                 const petal = new Petal(data.name, data.rarity, data.index, data.listlength, data.playerid)
                 petals.push(petal);
-                broadcast({ type: 'petals', petals });
+                broadcast({ type: 'petals', petals: petals });
                 break;
             case 'removePetalsWithId':
                 petals.forEach(petal => {
@@ -75,7 +87,7 @@ wss.on('connection', (ws) => {
                         petals.splice(petals.indexOf(petal), 1);
                     }
                 })
-                broadcast({ type: 'petals', petals });
+                broadcast({ type: 'petals', petals: petals });
                 break;
             case 'disconnect':
                 delete players[ws.id];
@@ -84,7 +96,7 @@ wss.on('connection', (ws) => {
                         petals.splice(petals.indexOf(petal), 1);
                     }
                 })
-                broadcast({ type: 'update', players });
+                broadcast({ type: 'update', data: players });
                 break;
             default:
                 console.log('Received unsupported message type:', data.type);
@@ -94,7 +106,7 @@ wss.on('connection', (ws) => {
     function broadcast(data) {
         wss.clients.forEach((client) => {
             if (client.readyState === WebSocket.OPEN) {
-                client.send(JSON.stringify(data));
+                client.send(CircularJSON.stringify(data));
             }
         });
     }

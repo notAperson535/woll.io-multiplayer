@@ -4,6 +4,15 @@ function rand(min, max) {
     return Math.floor(Math.random() * (max - min + 1) + min)
 }
 
+function isColliding(first, second) {
+    if (first.x - first.width / 2 < second.x + second.width / 2 && first.x + first.width / 2 > second.x - second.width / 2 &&
+        first.y - first.height / 2 < second.y + second.height / 2 && first.y + first.height / 2 > second.y - second.height / 2) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
 let wallthickness = 5
 let playingwidth = 20
 let playingheight = 10
@@ -68,8 +77,11 @@ class Enemy {
         }
 
         this.enemyInfo = enemylist.find(t => t.name === name);
-        this.enemyHealth = this.enemyInfo.basehealth * healthmultiplier
-        this.enemyDamage = this.enemyInfo.basedamage * damagemultiplier
+        this.health = this.enemyInfo.basehealth * healthmultiplier
+        this.damage = this.enemyInfo.basedamage * damagemultiplier
+
+        this.healthBarWidthMultiplier = 100 / this.health
+        this.healthBarWidthMultiplier *= sizemultiplier
 
         this.speed = this.enemyInfo.speed;
 
@@ -89,10 +101,39 @@ class Enemy {
 
         this.img = this.enemyInfo.img
         this.rotation = 0
+
+        this.id = Math.random().toString(36).substring(2, 12)
+
+        this.collidingwith = []
     }
 
-    update() {
-        // Update enemy position
+    update(players, petals) {
+        players.forEach(player => {
+            const index = this.collidingwith.findIndex(t => t.id === player.id);
+            if (isColliding(this, player)) {
+                if (index == -1) {
+                    this.health -= player.damage
+                    this.collidingwith.push(player)
+                }
+            } else {
+                if (index !== -1) {
+                    this.collidingwith.splice(index, 1)
+                }
+            }
+        });
+        petals.forEach(petal => {
+            const index = this.collidingwith.findIndex(t => t.id === petal.id);
+            if (isColliding(this, petal)) {
+                if (index == -1) {
+                    this.health -= petal.damage
+                    this.collidingwith.push(petal)
+                }
+            } else {
+                if (index !== -1) {
+                    this.collidingwith.splice(index, 1)
+                }
+            }
+        });
     }
 }
 
