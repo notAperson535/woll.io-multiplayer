@@ -102,38 +102,44 @@ class Enemy {
         this.img = this.enemyInfo.img
         this.rotation = 0
 
+        this.damagemultiplier = damagemultiplier
+        this.healthmultiplier = healthmultiplier
+
         this.id = Math.random().toString(36).substring(2, 12)
 
         this.collidingwith = []
     }
 
     update(players, petals) {
-        players.forEach(player => {
-            const index = this.collidingwith.findIndex(t => t.id === player.id);
-            if (isColliding(this, player)) {
-                if (index == -1) {
-                    this.health -= player.damage
-                    this.collidingwith.push(player)
+        if (this.health > 1) {
+            players.forEach(player => {
+                const index = this.collidingwith.findIndex(t => t.id === player.id);
+                if (isColliding(this, player)) {
+                    if (index == -1) {
+                        this.health -= player.damage
+                        this.collidingwith.push(player)
+                    }
+                } else {
+                    if (index !== -1) {
+                        this.collidingwith.splice(index, 1)
+                    }
                 }
-            } else {
-                if (index !== -1) {
-                    this.collidingwith.splice(index, 1)
+            });
+            petals.forEach(petal => {
+                const index = this.collidingwith.findIndex(t => t.id === petal.id);
+                if (isColliding(this, petal)) {
+                    if (index == -1) {
+                        this.health -= petal.damage
+                        this.collidingwith.push(petal)
+                    }
+                } else {
+                    if (index !== -1) {
+                        this.collidingwith.splice(index, 1)
+                    }
                 }
-            }
-        });
-        petals.forEach(petal => {
-            const index = this.collidingwith.findIndex(t => t.id === petal.id);
-            if (isColliding(this, petal)) {
-                if (index == -1) {
-                    this.health -= petal.damage
-                    this.collidingwith.push(petal)
-                }
-            } else {
-                if (index !== -1) {
-                    this.collidingwith.splice(index, 1)
-                }
-            }
-        });
+            });
+        }
+        return this.health
     }
 }
 

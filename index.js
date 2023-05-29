@@ -52,6 +52,7 @@ const petals = [];
 
 const Enemy = require("./public/enemies/enemy.js");
 const Petal = require("./public/petals/petal.js");
+const enemylist = require('./public/enemies/enemylist.js');
 
 wss.on('connection', (ws) => {
     ws.on('message', (message) => {
@@ -65,7 +66,13 @@ wss.on('connection', (ws) => {
                     players[index] = data;
                 }
                 petals.forEach(petal => petal.update(players, enemies))
-                enemies.forEach(enemy => enemy.update(players, petals))
+                enemies.forEach(enemy => {
+                    const index = enemies.findIndex(t => t.id === enemy.id);
+                    if (enemy.update(players, petals) <= 0) {
+                        petals.forEach(petal => petal.collidingwith.splice(petal.collidingwith.findIndex(t => t.id === enemy.id), 1))
+                        enemies.splice(index, 1)
+                    }
+                })
                 broadcast({ type: 'update', players });
                 broadcast({ type: 'enemies', enemies });
                 broadcast({ type: 'petals', petals });
@@ -81,26 +88,17 @@ wss.on('connection', (ws) => {
                 petals.push(petal);
                 broadcast({ type: 'petals', petals: petals });
                 break;
-            case 'removePetalsWithId':
-                petals.forEach(petal => {
-                    if (petal.playerid === data) {
-                        petals.splice(petals.indexOf(petal), 1);
-                    }
-                })
-                broadcast({ type: 'petals', petals: petals });
-                break;
-            case 'disconnect':
-                delete players[ws.id];
-                petals.forEach(petal => {
-                    if (petal.playerid == ws.id) {
-                        petals.splice(petals.indexOf(petal), 1);
-                    }
-                })
-                broadcast({ type: 'update', data: players });
-                break;
             default:
                 console.log('Received unsupported message type:', data.type);
         }
+    });
+
+    ws.on('close', (playerid) => {
+        let id = playerid.toString()
+        petals.forEach(petal => {
+            if (petal.playerid === id) petals.splice(petals.findIndex(t => t.playerid === id))
+        });
+        players.splice(players.findIndex(t => t.id === id), 1)
     });
 
     function broadcast(data) {

@@ -63,6 +63,11 @@ socket.addEventListener("message", (event) => {
     switch (data.type) {
         case "update":
             players = data.players
+            gameLoop()
+            backgroundLoop()
+            playerLoop()
+            enemyLoop()
+            petalLoop()
             break;
         case "petals":
             petals = data.petals
@@ -72,6 +77,10 @@ socket.addEventListener("message", (event) => {
             break;
     }
 });
+
+window.onbeforeunload = () => {
+    socket.close(player.id);
+};
 
 function checkFlag() {
     if (player.id === null) {
@@ -230,12 +239,12 @@ export function rand(min, max) {
 
 function gameLoop() {
     ctx.clearRect(0, 0, canvas.width, canvas.height)
-    requestAnimationFrame(gameLoop)
+    // requestAnimationFrame(gameLoop)
 }
 
 function backgroundLoop() {
     drawBackground(ctx, canvas.width, canvas.height, player)
-    requestAnimationFrame(backgroundLoop)
+    // requestAnimationFrame(backgroundLoop)
 }
 
 function playerLoop() {
@@ -250,17 +259,17 @@ function playerLoop() {
     movePlayer()
 
     follow(player)
-    requestAnimationFrame(playerLoop)
+    // requestAnimationFrame(playerLoop)
 }
 
 function enemyLoop() {
     drawEnemies()
-    requestAnimationFrame(enemyLoop)
+    // requestAnimationFrame(enemyLoop)
 }
 
 function petalLoop() {
     drawPetals()
-    requestAnimationFrame(petalLoop)
+    // requestAnimationFrame(petalLoop)
 }
 
 document.addEventListener('keydown', handleKeyDown)
@@ -303,7 +312,7 @@ function drawEnemies() {
             ctx.rotate(enemy.rotation)
             ctx.drawImage(sprite, enemy.x - enemy.width / 2, enemy.y - enemy.height / 2, enemy.width, enemy.height)
             ctx.beginPath()
-            ctx.roundRect(enemy.x - (enemy.healthBarWidthMultiplier * enemy.health) / 2, enemy.y + enemy.height / 2 + 5, enemy.health * enemy.healthBarWidthMultiplier, 5, 2);
+            ctx.roundRect(enemy.x - (enemy.healthBarWidthMultiplier * enemy.health * enemy.healthmultiplier) / 2, enemy.y + enemy.height / 2 + 5, enemy.health * enemy.healthBarWidthMultiplier, 5, 2);
             ctx.fillStyle = "#91dd46";
             ctx.fill()
             ctx.stroke()
