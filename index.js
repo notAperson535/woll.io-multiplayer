@@ -55,6 +55,9 @@ const Petal = require("./public/petals/petal.js");
 const enemylist = require('./public/enemies/enemylist.js');
 
 wss.on('connection', (ws) => {
+    // Store the player ID associated with this WebSocket connection
+    let playerId;
+
     ws.on('message', (message) => {
         const originaldata = JSON.parse(message);
         const data = originaldata.data
@@ -73,15 +76,13 @@ wss.on('connection', (ws) => {
                         enemies.splice(index, 1)
                     }
                 })
-                broadcast({ type: 'update', players });
+                broadcast({ type: 'update', players, id: playerId });
                 broadcast({ type: 'enemies', enemies });
                 broadcast({ type: 'petals', petals });
                 break;
             case 'addPlayer':
                 players.push(data)
-                break;
-            case 'removePlayer':
-                //fill this out
+                playerId = data.id;
                 break;
             case 'addPetal':
                 const petal = new Petal(data.name, data.rarity, data.index, data.listlength, data.playerid)
@@ -93,12 +94,20 @@ wss.on('connection', (ws) => {
         }
     });
 
-    ws.on('close', (playerid) => {
-        let id = playerid.toString()
-        petals.forEach(petal => {
-            if (petal.playerid === id) petals.splice(petals.findIndex(t => t.playerid === id))
-        });
-        players.splice(players.findIndex(t => t.id === id), 1)
+    ws.on('close', () => {
+        if (playerId) {
+            const petalsToRemove = [];
+            petals.forEach((petal, index) => {
+                if (petal.playerid === playerId) {
+                    petalsToRemove.push(index);
+                }
+            });
+
+            petalsToRemove.reverse().forEach((index) => {
+                petals.splice(index, 1);
+            });
+        }
+        players.splice(players.findIndex(t => t.id === playerId), 1)
     });
 
     function broadcast(data) {

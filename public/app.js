@@ -62,12 +62,14 @@ socket.addEventListener("message", (event) => {
     let data = JSON.parse(event.data);
     switch (data.type) {
         case "update":
-            players = data.players
-            gameLoop()
-            backgroundLoop()
-            playerLoop()
-            enemyLoop()
-            petalLoop()
+            if (data.id == player.id) {
+                players = data.players
+                gameLoop()
+                backgroundLoop()
+                playerLoop()
+                enemyLoop()
+                petalLoop()
+            }
             break;
         case "petals":
             petals = data.petals
@@ -79,7 +81,7 @@ socket.addEventListener("message", (event) => {
 });
 
 window.onbeforeunload = () => {
-    socket.close(player.id);
+    socket.close();
 };
 
 function checkFlag() {
