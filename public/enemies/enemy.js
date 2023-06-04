@@ -108,6 +108,9 @@ class Enemy {
         this.id = Math.random().toString(36).substring(2, 12)
 
         this.collidingwith = []
+
+        this.rarity = rarity
+        this.drops = this.enemyInfo.drops
     }
 
     update(players, petals) {

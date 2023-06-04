@@ -31,16 +31,17 @@ const player = {
 export let players = []
 export let enemies = []
 export let petals = []
+export let drops = []
 let localpetals = [
+    { rarity: "common", name: "basic" },
     { rarity: "common", name: "rock" },
-    { rarity: "common", name: "rock" },
-    { rarity: "common", name: "rock" },
-    { rarity: "common", name: "rock" },
+    { rarity: "common", name: "heavy" },
+    { rarity: "common", name: "basic" },
     { rarity: "common", name: "rock" },
 ]
 
 // const socket = io()
-const socket = new WebSocket("ws://localhost:3000");
+const socket = new WebSocket("ws://localhost:3000")
 
 socket.addEventListener("open", () => {
     player.id = Math.random().toString(36).substring(2, 12)
@@ -48,57 +49,57 @@ socket.addEventListener("open", () => {
     const message = {
         type: 'addPlayer',
         data: player
-    };
+    }
     socket.send(JSON.stringify(message))
 
-    gameLoop()
-    backgroundLoop()
     playerLoop()
-    enemyLoop()
-    petalLoop()
-});
+})
 
 socket.addEventListener("message", (event) => {
-    let data = JSON.parse(event.data);
+    let data = JSON.parse(event.data)
     switch (data.type) {
         case "update":
             if (data.id == player.id) {
                 players = data.players
                 gameLoop()
-                backgroundLoop()
+                drawBackground(ctx, canvas.width, canvas.height, player)
                 playerLoop()
-                enemyLoop()
-                petalLoop()
+                drawPetals()
+                drawEnemies()
+                drawDrops()
             }
-            break;
+            break
         case "petals":
             petals = data.petals
-            break;
+            break
+        case "drops":
+            drops = data.drops
+            break
         case "enemies":
             enemies = data.enemies
-            break;
+            break
     }
-});
+})
 
 window.onbeforeunload = () => {
-    socket.close();
-};
+    socket.close()
+}
 
 function checkFlag() {
     if (player.id === null) {
-        window.setTimeout(checkFlag, 1);
+        window.setTimeout(checkFlag, 1)
     } else {
         localpetals = localpetals.map((data, index) => ({ ...data, index: index, listlength: localpetals.length, playerid: player.id }))
         localpetals.forEach(petal => {
             const message = {
                 type: 'addPetal',
                 data: petal
-            };
+            }
             socket.send(JSON.stringify(message))
         })
     }
 }
-checkFlag();
+checkFlag()
 
 export let camera = {
     x: 0,
@@ -112,10 +113,10 @@ function follow(player) {
 
 function waitFor(conditionFunction) {
     const poll = resolve => {
-        if (conditionFunction()) resolve();
-        else setTimeout(_ => poll(resolve), 0);
+        if (conditionFunction()) resolve()
+        else setTimeout(_ => poll(resolve), 0)
     }
-    return new Promise(poll);
+    return new Promise(poll)
 }
 
 function drawPlayers() {
@@ -126,8 +127,8 @@ function drawPlayers() {
         ctx.translate(-camera.x, -camera.y)
         ctx.drawImage(sprite, player.x - player.width / 2, player.y - player.height / 2, player.width, player.height)
         ctx.beginPath()
-        ctx.roundRect(player.x - 50, player.y + player.height / 2 + 5, player.health, 5, 2);
-        ctx.fillStyle = "#91dd46";
+        ctx.roundRect(player.x - 50, player.y + player.height / 2 + 5, player.health, 5, 2)
+        ctx.fillStyle = "#91dd46"
         ctx.fill()
         ctx.stroke()
         ctx.restore()
@@ -229,9 +230,9 @@ function handleKeyUp(event) {
 export function isColliding(first, second) {
     if (first.x - first.width / 2 < second.x + second.width / 2 && first.x + first.width / 2 > second.x - second.width / 2 &&
         first.y - first.height / 2 < second.y + second.height / 2 && first.y + first.height / 2 > second.y - second.height / 2) {
-        return true;
+        return true
     } else {
-        return false;
+        return false
     }
 }
 
@@ -241,19 +242,13 @@ export function rand(min, max) {
 
 function gameLoop() {
     ctx.clearRect(0, 0, canvas.width, canvas.height)
-    // requestAnimationFrame(gameLoop)
-}
-
-function backgroundLoop() {
-    drawBackground(ctx, canvas.width, canvas.height, player)
-    // requestAnimationFrame(backgroundLoop)
 }
 
 function playerLoop() {
     const message = {
         type: 'update',
         data: player
-    };
+    }
     socket.send(JSON.stringify(message))
 
     drawPlayers()
@@ -261,17 +256,6 @@ function playerLoop() {
     movePlayer()
 
     follow(player)
-    // requestAnimationFrame(playerLoop)
-}
-
-function enemyLoop() {
-    drawEnemies()
-    // requestAnimationFrame(enemyLoop)
-}
-
-function petalLoop() {
-    drawPetals()
-    // requestAnimationFrame(petalLoop)
 }
 
 document.addEventListener('keydown', handleKeyDown)
@@ -279,17 +263,17 @@ document.addEventListener('keyup', handleKeyUp)
 
 socket.addEventListener('enemies', (enemyData) => {
     enemies = enemyData
-});
+})
 
 socket.addEventListener('petals', (petalData) => {
     petals = petalData
     console.log(petalData)
-});
+})
 
 function checkPlayerCollision() {
     if (enemies.length !== 0) {
         enemies.forEach(enemy => {
-            const index = player.collidingwith.findIndex(t => t.id === enemy.id);
+            const index = player.collidingwith.findIndex(t => t.id === enemy.id)
             if (isColliding(player, enemy)) {
                 if (index == -1) {
                     player.health -= enemy.damage
@@ -300,7 +284,7 @@ function checkPlayerCollision() {
                     player.collidingwith.splice(index, 1)
                 }
             }
-        });
+        })
     }
 }
 
@@ -314,8 +298,8 @@ function drawEnemies() {
             ctx.rotate(enemy.rotation)
             ctx.drawImage(sprite, enemy.x - enemy.width / 2, enemy.y - enemy.height / 2, enemy.width, enemy.height)
             ctx.beginPath()
-            ctx.roundRect(enemy.x - (enemy.healthBarWidthMultiplier * enemy.health * enemy.healthmultiplier) / 2, enemy.y + enemy.height / 2 + 5, enemy.health * enemy.healthBarWidthMultiplier, 5, 2);
-            ctx.fillStyle = "#91dd46";
+            ctx.roundRect(enemy.x - (enemy.healthBarWidthMultiplier * enemy.health * enemy.healthmultiplier) / 2, enemy.y + enemy.height / 2 + 5, enemy.health * enemy.healthBarWidthMultiplier, 5, 2)
+            ctx.fillStyle = "#91dd46"
             ctx.fill()
             ctx.stroke()
             ctx.restore()
@@ -326,10 +310,10 @@ function drawEnemies() {
 function drawPetals() {
     petals.forEach(petal => {
         if (petal.health <= 0) {
-            void 0;
+            void 0
         } else {
             let sprite = new Image()
-            sprite.src = petal.img
+            if (petal.img !== undefined) sprite.src = petal.img
             ctx.save()
             // ctx.rotate(petal.rotation)
             ctx.translate(-camera.x, -camera.y)
@@ -339,4 +323,9 @@ function drawPetals() {
     })
 }
 
-// follow(player)
+function drawDrops() {
+    // ADD PETAL SCALING
+    drops.forEach(dropgroup => {
+        console.log(dropgroup)
+    })
+}

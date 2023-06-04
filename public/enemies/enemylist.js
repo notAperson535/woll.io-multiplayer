@@ -10,7 +10,7 @@ module.exports = [
         speed: 0,
         drops: [
             "heavy",
-            "rock",
+            "rock"
         ]
     },
     {

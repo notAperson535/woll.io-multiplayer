@@ -62,8 +62,8 @@ class Petal {
         this.damagemultiplier = damagemultiplier
         this.healthmultiplier = healthmultiplier
 
-        this.width = 20
-        this.height = 20
+        this.width = this.petalInfo.width
+        this.height = this.width
 
         this.img = this.petalInfo.img
         this.rotation = 0
