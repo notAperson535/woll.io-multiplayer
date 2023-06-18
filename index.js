@@ -70,7 +70,6 @@ wss.on('connection', (ws) => {
         dropgroup.x = x
         dropgroup.y = y
         drops.push(dropgroup)
-        console.log(drops)
     }
 
     ws.on('message', (message) => {

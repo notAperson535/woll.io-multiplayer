@@ -40,7 +40,6 @@ let localpetals = [
     { rarity: "common", name: "rock" },
 ]
 
-// const socket = io()
 const socket = new WebSocket("ws://localhost:3000")
 
 socket.addEventListener("open", () => {
@@ -64,8 +63,8 @@ socket.addEventListener("message", (event) => {
                 gameLoop()
                 drawBackground(ctx, canvas.width, canvas.height, player)
                 playerLoop()
-                drawPetals()
                 drawEnemies()
+                drawPetals()
                 drawDrops()
             }
             break
@@ -313,7 +312,7 @@ function drawPetals() {
             void 0
         } else {
             let sprite = new Image()
-            if (petal.img !== undefined) sprite.src = petal.img
+            sprite.src = "sprites/petals/" + petal.name + ".svg";
             ctx.save()
             // ctx.rotate(petal.rotation)
             ctx.translate(-camera.x, -camera.y)
@@ -324,8 +323,73 @@ function drawPetals() {
 }
 
 function drawDrops() {
-    // ADD PETAL SCALING
     drops.forEach(dropgroup => {
-        console.log(dropgroup)
-    })
+        let totalWidth = 0;
+
+        dropgroup.drops.forEach(drop => {
+            let sprite = new Image();
+            sprite.src = "sprites/petals/" + drop.petal + ".svg";
+            totalWidth += sprite.width;
+        });
+
+        let spacing = 60
+        let currentX = dropgroup.x - totalWidth / 2;
+
+        dropgroup.drops.forEach(drop => {
+            let bordercolor = "#"
+            let bgcolor = "#"
+
+            switch (drop.rarity) {
+                case "divine":
+                    bgcolor = "#DA781E"
+                    bordercolor = "#AC6625"
+                    break;
+                case "supreme":
+                    bgcolor = "#DA1E78"
+                    bordercolor = "#922258"
+                    break;
+                case "mythic":
+                    bgcolor = "#1CD4E0"
+                    bordercolor = "#1FC2CC"
+                    break;
+                case "legendary":
+                    bgcolor = "#C73030"
+                    bordercolor = "#982424"
+                    break;
+                case "epic":
+                    bgcolor = "#7B30C7"
+                    bordercolor = "#671D95"
+                    break;
+                case "rare":
+                    bgcolor = "#4530C7"
+                    bordercolor = "#1D2887"
+                    break;
+                case "uncommon":
+                    bgcolor = "#BBC730"
+                    bordercolor = "#A3AC37"
+                    break;
+                case "common":
+                    bgcolor = "#3CC730"
+                    bordercolor = "#37A82E"
+                    break;
+            }
+
+            let sprite = new Image();
+            sprite.src = "sprites/petals/" + drop.petal + ".svg";
+            let dropX = currentX + sprite.width / 2;
+            ctx.save();
+            ctx.translate(-camera.x, -camera.y);
+            ctx.beginPath()
+            ctx.roundRect(dropX - 25, dropgroup.y - 25, 50, 50, 2)
+            ctx.fillStyle = bgcolor
+            ctx.linewidth = 15
+            ctx.strokeStyle = bordercolor;
+            ctx.fill()
+            ctx.stroke()
+            ctx.drawImage(sprite, dropX - sprite.width / 2, dropgroup.y - sprite.width / 2, sprite.width, sprite.width);
+            ctx.restore();
+
+            currentX += sprite.width + spacing;
+        });
+    });
 }

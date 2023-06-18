@@ -52,12 +52,11 @@ class Petal {
                 healthmultiplier = 1;
                 damagemultiplier = 1;
         }
-
         this.petalInfo = petallist.find(t => t.name === name);
 
-        // this.health = this.petalInfo.basehealth * healthmultiplier
+        this.name = this.petalInfo.name
+
         this.health = 0
-        // this.damage = this.petalInfo.basedamage * damagemultiplier
         this.damage = 0
         this.damagemultiplier = damagemultiplier
         this.healthmultiplier = healthmultiplier
@@ -65,7 +64,6 @@ class Petal {
         this.width = this.petalInfo.width
         this.height = this.width
 
-        this.img = this.petalInfo.img
         this.rotation = 0
 
         this.rotation = 0
