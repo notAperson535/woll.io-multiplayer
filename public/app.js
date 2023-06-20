@@ -2,8 +2,21 @@ import { drawBackground } from './background.js'
 
 const canvas = document.getElementById('game-canvas')
 const ctx = canvas.getContext('2d')
-canvas.width = window.innerWidth
-canvas.height = window.innerHeight
+
+let width = window.innerWidth, height = window.innerHeight;
+const dpi = window.devicePixelRatio;
+
+canvas.width = width * dpi;
+canvas.height = height * dpi;
+canvas.style.width = width + "px";
+canvas.style.height = height + "px";
+ctx.scale(dpi, dpi);
+
+var Font = new FontFace('Font', 'url(./Ubuntu-Bold.ttf)');
+
+Font.load().then(function (font) {
+    document.fonts.add(font);
+});
 
 export let wallthickness = 5
 export let playingwidth = 20
@@ -61,11 +74,11 @@ socket.addEventListener("message", (event) => {
             if (data.id == player.id) {
                 players = data.players
                 gameLoop()
-                drawBackground(ctx, canvas.width, canvas.height, player)
-                playerLoop()
+                drawBackground(ctx, canvas.width, canvas.height, dpi, player)
                 drawEnemies()
                 drawPetals()
                 drawDrops()
+                playerLoop()
             }
             break
         case "petals":
@@ -106,8 +119,8 @@ export let camera = {
 }
 
 function follow(player) {
-    camera.x = player.x - canvas.width / 2
-    camera.y = player.y - canvas.height / 2
+    camera.x = player.x - canvas.width / 2 / dpi
+    camera.y = player.y - canvas.height / 2 / dpi
 }
 
 function waitFor(conditionFunction) {
@@ -266,7 +279,7 @@ socket.addEventListener('enemies', (enemyData) => {
 
 socket.addEventListener('petals', (petalData) => {
     petals = petalData
-    console.log(petalData)
+    consolcanvas.log(petalData)
 })
 
 function checkPlayerCollision() {
@@ -289,7 +302,7 @@ function checkPlayerCollision() {
 
 function drawEnemies() {
     enemies.forEach(enemy => {
-        if (enemy.x + enemy.width / 2 >= player.x - canvas.width / 2 && enemy.x - enemy.width / 2 <= player.x + canvas.width / 2 || enemy.y + enemy.height / 2 >= player.y - canvas.height / 2 && enemy.y - enemy.height / 2 <= player.y + canvas.height / 2) {
+        if (enemy.x + enemy.width / 2 >= player.x - canvas.width / 2 / dpi && enemy.x - enemy.width / 2 <= player.x + canvas.width / 2 / dpi || enemy.y + enemy.height / 2 >= player.y - canvas.height / 2 / dpi && enemy.y - enemy.height / 2 <= player.y + canvas.height / 2 / dpi) {
             let sprite = new Image()
             sprite.src = enemy.img
             ctx.save()
@@ -329,7 +342,7 @@ function drawDrops() {
         dropgroup.drops.forEach(drop => {
             let sprite = new Image();
             sprite.src = "sprites/petals/" + drop.petal + ".svg";
-            totalWidth += sprite.width;
+            totalWidth += drop.width;
         });
 
         let spacing = 60
@@ -376,20 +389,26 @@ function drawDrops() {
 
             let sprite = new Image();
             sprite.src = "sprites/petals/" + drop.petal + ".svg";
-            let dropX = currentX + sprite.width / 2;
+            let dropX = currentX + drop.width / 2;
             ctx.save();
             ctx.translate(-camera.x, -camera.y);
             ctx.beginPath()
-            ctx.roundRect(dropX - 25, dropgroup.y - 25, 50, 50, 2)
+            ctx.roundRect(dropX - 25, dropgroup.y - 25, 50, 50, 2.5)
             ctx.fillStyle = bgcolor
-            ctx.linewidth = 15
+            ctx.lineWidth = 3
             ctx.strokeStyle = bordercolor;
             ctx.fill()
             ctx.stroke()
-            ctx.drawImage(sprite, dropX - sprite.width / 2, dropgroup.y - sprite.width / 2, sprite.width, sprite.width);
+            ctx.drawImage(sprite, dropX - drop.width / 2, dropgroup.y - drop.width / 2 - 6, drop.width, drop.width);
+            ctx.textAlign = "center"
+            ctx.fillStyle = "#fff"
+            ctx.lineWidth = 0.7
+            ctx.strokeStyle = "#000"
+            ctx.font = "13px Font"
+            ctx.fillText(drop.displayname, dropX, dropgroup.y + 15);
+            ctx.strokeText(drop.displayname, dropX, dropgroup.y + 15);
             ctx.restore();
-
-            currentX += sprite.width + spacing;
+            currentX += drop.width + spacing;
         });
     });
 }

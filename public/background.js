@@ -2,9 +2,9 @@ import { wallthickness, playingwidth, playingheight, camera } from "./app.js"
 
 let sidelength = 512
 
-export function drawBackground(ctx, canvaswidth, canvasheight, player) {
+export function drawBackground(ctx, canvaswidth, canvasheight, dpi, player) {
     function drawTexture(x, y, imgsrc) {
-        if (x + sidelength / 2 >= player.x - canvaswidth / 2 && x - sidelength / 2 <= player.x + canvaswidth / 2 || y + sidelength / 2 >= player.y - canvasheight / 2 && y - sidelength / 2 <= player.y + canvasheight / 2) {
+        if (x + sidelength / 2 >= player.x - canvaswidth / 2 / dpi && x - sidelength / 2 <= player.x + canvaswidth / 2 / dpi || y + sidelength / 2 >= player.y - canvasheight / 2 / dpi && y - sidelength / 2 <= player.y + canvasheight / 2 / dpi) {
             let sprite = new Image()
             sprite.src = imgsrc
             ctx.save()

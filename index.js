@@ -53,6 +53,7 @@ const drops = []
 
 const Enemy = require("./public/enemies/enemy.js")
 const Petal = require("./public/petals/petal.js")
+const petallist = require("./public/petals/petallist.js")
 
 wss.on('connection', (ws) => {
     let playerId
@@ -65,6 +66,11 @@ wss.on('connection', (ws) => {
             drop.petal = enemydrop
             drop.id = Math.random().toString(36).substring(2, 12)
             drop.rarity = rarity
+            const index = petallist.findIndex(t => t.name === drop.petal)
+            if (index !== -1) {
+                drop.displayname = petallist[index].displayname
+                drop.width = petallist[index].width
+            }
             dropgroup.drops.push(drop)
         })
         dropgroup.x = x
