@@ -75,7 +75,16 @@ wss.on('connection', (ws) => {
         })
         dropgroup.x = x
         dropgroup.y = y
-        drops.push(dropgroup)
+        let totalWidth = 0
+        dropgroup.drops.forEach(drop => totalWidth += drop.width);
+        let spacing = 60
+        let currentX = dropgroup.x - totalWidth / 2;
+        dropgroup.drops.forEach(drop => {
+            drop.x = currentX
+            drop.y = dropgroup.y
+            currentX += drop.width + spacing;
+            drops.push(drop)
+        })
     }
 
     ws.on('message', (message) => {

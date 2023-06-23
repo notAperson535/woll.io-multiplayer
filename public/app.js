@@ -12,10 +12,15 @@ canvas.style.width = width + "px";
 canvas.style.height = height + "px";
 ctx.scale(dpi, dpi);
 
+ctx.font = "64px sans-serif"
+ctx.textAlign = "center"
+ctx.fillText("Loading...", canvas.width / 2 / dpi, canvas.height / 2 / dpi)
+
 var Font = new FontFace('Font', 'url(./Ubuntu-Bold.ttf)');
 
 Font.load().then(function (font) {
     document.fonts.add(font);
+    drawHomeScreen()
 });
 
 export let wallthickness = 5
@@ -38,13 +43,16 @@ const player = {
     movingUp: false,
     movingDown: false,
     petalRadius: 50,
-    collidingwith: []
+    collidingwith: [],
 }
 
 export let players = []
 export let enemies = []
 export let petals = []
+export let serverdrops = []
 export let drops = []
+export let inventory = []
+
 let localpetals = [
     { rarity: "common", name: "basic" },
     { rarity: "common", name: "rock" },
@@ -53,43 +61,78 @@ let localpetals = [
     { rarity: "common", name: "rock" },
 ]
 
-const socket = new WebSocket("ws://localhost:3000")
+let socket = undefined
+let gameStarted = false
 
-socket.addEventListener("open", () => {
-    player.id = Math.random().toString(36).substring(2, 12)
+function drawHomeScreen() {
+    ctx.beginPath()
+    ctx.roundRect(canvas.width / 2 / dpi - 75, canvas.height / 2 / dpi - 25, 150, 50, 2)
+    ctx.fillStyle = "#29E025"
+    ctx.strokeStyle = "#39B637"
+    ctx.lineWidth = 4
+    ctx.fill()
+    ctx.stroke()
+    ctx.lineWidth = 1
+    ctx.fillStyle = "#fff"
+    ctx.strokeStyle = "#000"
+    ctx.textAlign = "center"
+    ctx.font = "24px Font"
+    ctx.fillText("Ready!", canvas.width / 2 / dpi, canvas.height / 2 / dpi + 8)
+    ctx.strokeText("Ready!", canvas.width / 2 / dpi, canvas.height / 2 / dpi + 8)
+}
 
-    const message = {
-        type: 'addPlayer',
-        data: player
-    }
-    socket.send(JSON.stringify(message))
+canvas.addEventListener("click", (event) => {
+    if (gameStarted == false) {
+        socket = new WebSocket("ws://localhost:3000")
+        socket.addEventListener("open", () => {
+            player.id = Math.random().toString(36).substring(2, 12)
 
-    playerLoop()
-})
-
-socket.addEventListener("message", (event) => {
-    let data = JSON.parse(event.data)
-    switch (data.type) {
-        case "update":
-            if (data.id == player.id) {
-                players = data.players
-                gameLoop()
-                drawBackground(ctx, canvas.width, canvas.height, dpi, player)
-                drawEnemies()
-                drawPetals()
-                drawDrops()
-                playerLoop()
+            const message = {
+                type: 'addPlayer',
+                data: player
             }
-            break
-        case "petals":
-            petals = data.petals
-            break
-        case "drops":
-            drops = data.drops
-            break
-        case "enemies":
-            enemies = data.enemies
-            break
+            socket.send(JSON.stringify(message))
+
+            playerLoop()
+        })
+
+        socket.addEventListener("message", (event) => {
+            let data = JSON.parse(event.data)
+            switch (data.type) {
+                case "update":
+                    if (data.id == player.id) {
+                        players = data.players
+                        gameLoop()
+                        drawBackground(ctx, canvas.width, canvas.height, dpi, player)
+                        drawEnemies()
+                        drawPetals()
+                        checkDropState()
+                        drawDrops()
+                        checkDropCollisions()
+                        playerLoop()
+                    }
+                    break
+                case "petals":
+                    petals = data.petals
+                    break
+                case "drops":
+                    serverdrops = data.drops
+                    break
+                case "enemies":
+                    enemies = data.enemies
+                    break
+            }
+
+        })
+        socket.addEventListener('enemies', (enemyData) => {
+            enemies = enemyData
+        })
+
+        socket.addEventListener('petals', (petalData) => {
+            petals = petalData
+            consolcanvas.log(petalData)
+        })
+        gameStarted = true
     }
 })
 
@@ -141,6 +184,8 @@ function drawPlayers() {
         ctx.beginPath()
         ctx.roundRect(player.x - 50, player.y + player.height / 2 + 5, player.health, 5, 2)
         ctx.fillStyle = "#91dd46"
+        ctx.lineWidth = 1
+        ctx.strokeStyle = "#000"
         ctx.fill()
         ctx.stroke()
         ctx.restore()
@@ -257,30 +302,27 @@ function gameLoop() {
 }
 
 function playerLoop() {
-    const message = {
-        type: 'update',
-        data: player
+    if (player.health <= 0) {
+        socket.close()
+        gameStarted = false
     }
-    socket.send(JSON.stringify(message))
+    else {
+        const message = {
+            type: 'update',
+            data: player
+        }
+        socket.send(JSON.stringify(message))
 
-    drawPlayers()
-    checkPlayerCollision()
-    movePlayer()
+        drawPlayers();
+        checkPlayerCollision();
+        movePlayer();
 
-    follow(player)
+        follow(player);
+    }
 }
 
 document.addEventListener('keydown', handleKeyDown)
 document.addEventListener('keyup', handleKeyUp)
-
-socket.addEventListener('enemies', (enemyData) => {
-    enemies = enemyData
-})
-
-socket.addEventListener('petals', (petalData) => {
-    petals = petalData
-    consolcanvas.log(petalData)
-})
 
 function checkPlayerCollision() {
     if (enemies.length !== 0) {
@@ -312,6 +354,8 @@ function drawEnemies() {
             ctx.beginPath()
             ctx.roundRect(enemy.x - (enemy.healthBarWidthMultiplier * enemy.health * enemy.healthmultiplier) / 2, enemy.y + enemy.height / 2 + 5, enemy.health * enemy.healthBarWidthMultiplier, 5, 2)
             ctx.fillStyle = "#91dd46"
+            ctx.lineWidth = 1
+            ctx.strokeStyle = "#000"
             ctx.fill()
             ctx.stroke()
             ctx.restore()
@@ -335,80 +379,88 @@ function drawPetals() {
     })
 }
 
+function checkDropState() {
+    drops = []
+    serverdrops.forEach(drop => {
+        const index = inventory.findIndex(t => t.id === drop.id)
+        if (index == -1) {
+            drops.push(drop)
+        }
+    })
+}
+
 function drawDrops() {
-    drops.forEach(dropgroup => {
-        let totalWidth = 0;
+    drops.forEach(drop => {
+        let bordercolor = "#"
+        let bgcolor = "#"
 
-        dropgroup.drops.forEach(drop => {
-            let sprite = new Image();
-            sprite.src = "sprites/petals/" + drop.petal + ".svg";
-            totalWidth += drop.width;
-        });
+        switch (drop.rarity) {
+            case "divine":
+                bgcolor = "#DA781E"
+                bordercolor = "#AC6625"
+                break;
+            case "supreme":
+                bgcolor = "#DA1E78"
+                bordercolor = "#922258"
+                break;
+            case "mythic":
+                bgcolor = "#1CD4E0"
+                bordercolor = "#1FC2CC"
+                break;
+            case "legendary":
+                bgcolor = "#C73030"
+                bordercolor = "#982424"
+                break;
+            case "epic":
+                bgcolor = "#7B30C7"
+                bordercolor = "#671D95"
+                break;
+            case "rare":
+                bgcolor = "#4530C7"
+                bordercolor = "#1D2887"
+                break;
+            case "uncommon":
+                bgcolor = "#BBC730"
+                bordercolor = "#A3AC37"
+                break;
+            case "common":
+                bgcolor = "#3CC730"
+                bordercolor = "#37A82E"
+                break;
+        }
 
-        let spacing = 60
-        let currentX = dropgroup.x - totalWidth / 2;
-
-        dropgroup.drops.forEach(drop => {
-            let bordercolor = "#"
-            let bgcolor = "#"
-
-            switch (drop.rarity) {
-                case "divine":
-                    bgcolor = "#DA781E"
-                    bordercolor = "#AC6625"
-                    break;
-                case "supreme":
-                    bgcolor = "#DA1E78"
-                    bordercolor = "#922258"
-                    break;
-                case "mythic":
-                    bgcolor = "#1CD4E0"
-                    bordercolor = "#1FC2CC"
-                    break;
-                case "legendary":
-                    bgcolor = "#C73030"
-                    bordercolor = "#982424"
-                    break;
-                case "epic":
-                    bgcolor = "#7B30C7"
-                    bordercolor = "#671D95"
-                    break;
-                case "rare":
-                    bgcolor = "#4530C7"
-                    bordercolor = "#1D2887"
-                    break;
-                case "uncommon":
-                    bgcolor = "#BBC730"
-                    bordercolor = "#A3AC37"
-                    break;
-                case "common":
-                    bgcolor = "#3CC730"
-                    bordercolor = "#37A82E"
-                    break;
-            }
-
-            let sprite = new Image();
-            sprite.src = "sprites/petals/" + drop.petal + ".svg";
-            let dropX = currentX + drop.width / 2;
-            ctx.save();
-            ctx.translate(-camera.x, -camera.y);
-            ctx.beginPath()
-            ctx.roundRect(dropX - 25, dropgroup.y - 25, 50, 50, 2.5)
-            ctx.fillStyle = bgcolor
-            ctx.lineWidth = 3
-            ctx.strokeStyle = bordercolor;
-            ctx.fill()
-            ctx.stroke()
-            ctx.drawImage(sprite, dropX - drop.width / 2, dropgroup.y - drop.width / 2 - 6, drop.width, drop.width);
-            ctx.textAlign = "center"
-            ctx.fillStyle = "#fff"
-            ctx.lineWidth = 0.7
-            ctx.strokeStyle = "#000"
-            ctx.font = "13px Font"
-            ctx.fillText(drop.displayname, dropX, dropgroup.y + 15);
-            ctx.strokeText(drop.displayname, dropX, dropgroup.y + 15);
-            ctx.restore();
-            currentX += drop.width + spacing;
-        });
+        let sprite = new Image();
+        sprite.src = "sprites/petals/" + drop.petal + ".svg";
+        ctx.save();
+        ctx.translate(-camera.x, -camera.y);
+        ctx.beginPath()
+        ctx.roundRect(drop.x - 25, drop.y - 25, 50, 50, 2.5)
+        ctx.fillStyle = bgcolor
+        ctx.lineWidth = 3
+        ctx.strokeStyle = bordercolor;
+        ctx.fill()
+        ctx.stroke()
+        ctx.drawImage(sprite, drop.x - drop.width / 2, drop.y - drop.width / 2 - 6, drop.width, drop.width);
+        ctx.textAlign = "center"
+        ctx.fillStyle = "#fff"
+        ctx.lineWidth = 0.7
+        ctx.strokeStyle = "#000"
+        ctx.font = "13px Font"
+        ctx.fillText(drop.displayname, drop.x, drop.y + 15);
+        ctx.strokeText(drop.displayname, drop.x, drop.y + 15);
+        ctx.restore();
     });
+}
+
+function checkDropCollisions() {
+    drops.forEach(drop => {
+        let collisiondetector = {}
+        collisiondetector.x = drop.x
+        collisiondetector.y = drop.y
+        collisiondetector.width = 50
+        collisiondetector.height = 50
+        if (isColliding(player, collisiondetector)) {
+            inventory.push(drop)
+        }
+    })
 }
