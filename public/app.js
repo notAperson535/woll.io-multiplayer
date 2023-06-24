@@ -124,7 +124,7 @@ canvas.addEventListener("click", (event) => {
             player.x = wallthickness * 512 - 256 + playersidelength / 2 + rand(0, 512 - playersidelength / 2)
             player.y = wallthickness * 512 - 256 + playersidelength / 2 + rand(0, playingheight * 512 - playersidelength / 2)
             // socket = new WebSocket("ws://localhost:3000")
-            socket = new WebSocket("ws://wollio-multiplayer-production.up.railway.app")
+            socket = new WebSocket("wss://wollio-multiplayer-production.up.railway.app")
             socket.addEventListener("open", () => {
                 player.id = Math.random().toString(36).substring(2, 12)
 
