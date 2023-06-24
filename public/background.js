@@ -1,8 +1,8 @@
-import { wallthickness, playingwidth, playingheight, camera } from "./app.js"
+import { wallthickness, playingwidth, playingheight, camera, canvaswidth, canvasheight, dpi, player, ctx } from "./app.js"
 
 let sidelength = 512
 
-export function drawBackground(ctx, canvaswidth, canvasheight, dpi, player) {
+export function drawBackground() {
     function drawTexture(x, y, imgsrc) {
         if (x + sidelength / 2 >= player.x - canvaswidth / 2 / dpi && x - sidelength / 2 <= player.x + canvaswidth / 2 / dpi || y + sidelength / 2 >= player.y - canvasheight / 2 / dpi && y - sidelength / 2 <= player.y + canvasheight / 2 / dpi) {
             let sprite = new Image()

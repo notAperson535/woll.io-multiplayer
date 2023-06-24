@@ -1,27 +1,32 @@
 import { drawBackground } from './background.js'
 
 const canvas = document.getElementById('game-canvas')
-const ctx = canvas.getContext('2d')
+export const ctx = canvas.getContext('2d')
 
-let width = window.innerWidth, height = window.innerHeight;
-const dpi = window.devicePixelRatio;
+export const dpi = window.devicePixelRatio
+let width = window.innerWidth, height = window.innerHeight
+canvas.width = width * dpi
+canvas.height = height * dpi
+export let canvaswidth = canvas.width
+export let canvasheight = canvas.height
+canvas.style.width = width + "px"
+canvas.style.height = height + "px"
+ctx.scale(dpi, dpi)
 
-canvas.width = width * dpi;
-canvas.height = height * dpi;
-canvas.style.width = width + "px";
-canvas.style.height = height + "px";
-ctx.scale(dpi, dpi);
-
+ctx.fillStyle = "#000"
+ctx.rect(0, 0, canvas.width, canvas.height)
+ctx.fill()
+ctx.fillStyle = "#fff"
 ctx.font = "64px sans-serif"
 ctx.textAlign = "center"
 ctx.fillText("Loading...", canvas.width / 2 / dpi, canvas.height / 2 / dpi)
 
-var Font = new FontFace('Font', 'url(./Ubuntu-Bold.ttf)');
+var Font = new FontFace('Font', 'url(./Ubuntu-Bold.ttf)')
 
 Font.load().then(function (font) {
-    document.fonts.add(font);
+    document.fonts.add(font)
     drawHomeScreen()
-});
+})
 
 export let wallthickness = 5
 export let playingwidth = 20
@@ -29,10 +34,10 @@ export let playingheight = 10
 
 let playersidelength = 40
 
-const player = {
+export const player = {
     id: null,
-    x: wallthickness * 512 - 256 + playersidelength / 2 + rand(0, 512 - playersidelength / 2),
-    y: wallthickness * 512 - 256 + playersidelength / 2 + rand(0, playingheight * 512 - playersidelength / 2),
+    x: 0,
+    y: 0,
     width: playersidelength,
     height: playersidelength,
     speed: 6,
@@ -51,7 +56,13 @@ export let enemies = []
 export let petals = []
 export let serverdrops = []
 export let drops = []
-export let inventory = []
+let inventoryString = localStorage.getItem("inventory") || '""'
+export let inventory = JSON.parse(inventoryString) || []
+
+function updateLocalStorage() {
+    let inventoryString = JSON.stringify(inventory)
+    localStorage.setItem("inventory", inventoryString)
+}
 
 let localpetals = [
     { rarity: "common", name: "basic" },
@@ -64,9 +75,18 @@ let localpetals = [
 let socket = undefined
 let gameStarted = false
 
+let mousePos = undefined
+
+window.addEventListener('mousemove', (event) => {
+    mousePos = { x: event.clientX, y: event.clientY, width: 1, height: 1 }
+})
+
+let startbutton = { x: canvas.width / 2 / dpi, y: canvas.height / 2 / dpi, width: 150, height: 50 }
+
 function drawHomeScreen() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
     ctx.beginPath()
-    ctx.roundRect(canvas.width / 2 / dpi - 75, canvas.height / 2 / dpi - 25, 150, 50, 2)
+    ctx.roundRect(startbutton.x - 75, startbutton.y - 25, startbutton.width, startbutton.height, 2)
     ctx.fillStyle = "#29E025"
     ctx.strokeStyle = "#39B637"
     ctx.lineWidth = 4
@@ -79,64 +99,86 @@ function drawHomeScreen() {
     ctx.font = "24px Font"
     ctx.fillText("Ready!", canvas.width / 2 / dpi, canvas.height / 2 / dpi + 8)
     ctx.strokeText("Ready!", canvas.width / 2 / dpi, canvas.height / 2 / dpi + 8)
+
+    // inventory pane
+
+    ctx.beginPath()
+    ctx.roundRect(10, 10, 350, canvas.height / dpi - 20, 2)
+    ctx.fillStyle = "#0b96ed"
+    ctx.strokeStyle = "#1785c9"
+    ctx.lineWidth = 3
+    ctx.fill()
+    ctx.stroke()
+
+    ctx.textAlign = "center"
+    ctx.fillStyle = "#fff"
+    ctx.strokeStyle = "#000"
+    ctx.lineWidth = 1
+    ctx.fillText("Inventory", 10 + 350 / 2, 50)
+    ctx.strokeText("Inventory", 10 + 350 / 2, 50)
 }
 
 canvas.addEventListener("click", (event) => {
-    if (gameStarted == false) {
-        socket = new WebSocket("ws://localhost:3000")
-        socket.addEventListener("open", () => {
-            player.id = Math.random().toString(36).substring(2, 12)
+    if (isColliding(mousePos, startbutton)) {
+        if (gameStarted == false) {
+            player.x = wallthickness * 512 - 256 + playersidelength / 2 + rand(0, 512 - playersidelength / 2)
+            player.y = wallthickness * 512 - 256 + playersidelength / 2 + rand(0, playingheight * 512 - playersidelength / 2)
+            // socket = new WebSocket("ws://localhost:3000")
+            socket = new WebSocket("ws://wollio-multiplayer-production.up.railway.app")
+            socket.addEventListener("open", () => {
+                player.id = Math.random().toString(36).substring(2, 12)
 
-            const message = {
-                type: 'addPlayer',
-                data: player
-            }
-            socket.send(JSON.stringify(message))
+                const message = {
+                    type: 'addPlayer',
+                    data: player
+                }
+                socket.send(JSON.stringify(message))
 
-            playerLoop()
-        })
+                playerLoop()
+            })
 
-        socket.addEventListener("message", (event) => {
-            let data = JSON.parse(event.data)
-            switch (data.type) {
-                case "update":
-                    if (data.id == player.id) {
-                        players = data.players
-                        gameLoop()
-                        drawBackground(ctx, canvas.width, canvas.height, dpi, player)
-                        drawEnemies()
-                        drawPetals()
-                        checkDropState()
-                        drawDrops()
-                        checkDropCollisions()
-                        playerLoop()
-                    }
-                    break
-                case "petals":
-                    petals = data.petals
-                    break
-                case "drops":
-                    serverdrops = data.drops
-                    break
-                case "enemies":
-                    enemies = data.enemies
-                    break
-            }
+            socket.addEventListener("message", (event) => {
+                let data = JSON.parse(event.data)
+                switch (data.type) {
+                    case "update":
+                        if (data.id == player.id) {
+                            players = data.players
+                            gameLoop()
+                            drawBackground()
+                            drawEnemies()
+                            drawPetals()
+                            checkDropState()
+                            drawDrops()
+                            checkDropCollisions()
+                            playerLoop()
+                        }
+                        break
+                    case "petals":
+                        petals = data.petals
+                        break
+                    case "drops":
+                        serverdrops = data.drops
+                        break
+                    case "enemies":
+                        enemies = data.enemies
+                        break
+                }
 
-        })
-        socket.addEventListener('enemies', (enemyData) => {
-            enemies = enemyData
-        })
+            })
+            socket.addEventListener('enemies', (enemyData) => {
+                enemies = enemyData
+            })
 
-        socket.addEventListener('petals', (petalData) => {
-            petals = petalData
-            consolcanvas.log(petalData)
-        })
-        gameStarted = true
+            socket.addEventListener('petals', (petalData) => {
+                petals = petalData
+            })
+            gameStarted = true
+        }
     }
 })
 
 window.onbeforeunload = () => {
+    updateLocalStorage()
     socket.close()
 }
 
@@ -313,11 +355,11 @@ function playerLoop() {
         }
         socket.send(JSON.stringify(message))
 
-        drawPlayers();
-        checkPlayerCollision();
-        movePlayer();
+        drawPlayers()
+        checkPlayerCollision()
+        movePlayer()
 
-        follow(player);
+        follow(player)
     }
 }
 
@@ -369,7 +411,7 @@ function drawPetals() {
             void 0
         } else {
             let sprite = new Image()
-            sprite.src = "sprites/petals/" + petal.name + ".svg";
+            sprite.src = "sprites/petals/" + petal.name + ".svg"
             ctx.save()
             // ctx.rotate(petal.rotation)
             ctx.translate(-camera.x, -camera.y)
@@ -398,58 +440,58 @@ function drawDrops() {
             case "divine":
                 bgcolor = "#DA781E"
                 bordercolor = "#AC6625"
-                break;
+                break
             case "supreme":
                 bgcolor = "#DA1E78"
                 bordercolor = "#922258"
-                break;
+                break
             case "mythic":
                 bgcolor = "#1CD4E0"
                 bordercolor = "#1FC2CC"
-                break;
+                break
             case "legendary":
                 bgcolor = "#C73030"
                 bordercolor = "#982424"
-                break;
+                break
             case "epic":
                 bgcolor = "#7B30C7"
                 bordercolor = "#671D95"
-                break;
+                break
             case "rare":
                 bgcolor = "#4530C7"
                 bordercolor = "#1D2887"
-                break;
+                break
             case "uncommon":
                 bgcolor = "#BBC730"
                 bordercolor = "#A3AC37"
-                break;
+                break
             case "common":
                 bgcolor = "#3CC730"
                 bordercolor = "#37A82E"
-                break;
+                break
         }
 
-        let sprite = new Image();
-        sprite.src = "sprites/petals/" + drop.petal + ".svg";
-        ctx.save();
-        ctx.translate(-camera.x, -camera.y);
+        let sprite = new Image()
+        sprite.src = "sprites/petals/" + drop.petal + ".svg"
+        ctx.save()
+        ctx.translate(-camera.x, -camera.y)
         ctx.beginPath()
         ctx.roundRect(drop.x - 25, drop.y - 25, 50, 50, 2.5)
         ctx.fillStyle = bgcolor
         ctx.lineWidth = 3
-        ctx.strokeStyle = bordercolor;
+        ctx.strokeStyle = bordercolor
         ctx.fill()
         ctx.stroke()
-        ctx.drawImage(sprite, drop.x - drop.width / 2, drop.y - drop.width / 2 - 6, drop.width, drop.width);
+        ctx.drawImage(sprite, drop.x - drop.width / 2, drop.y - drop.width / 2 - 6, drop.width, drop.width)
         ctx.textAlign = "center"
         ctx.fillStyle = "#fff"
         ctx.lineWidth = 0.7
         ctx.strokeStyle = "#000"
         ctx.font = "13px Font"
-        ctx.fillText(drop.displayname, drop.x, drop.y + 15);
-        ctx.strokeText(drop.displayname, drop.x, drop.y + 15);
-        ctx.restore();
-    });
+        ctx.fillText(drop.displayname, drop.x, drop.y + 15)
+        ctx.strokeText(drop.displayname, drop.x, drop.y + 15)
+        ctx.restore()
+    })
 }
 
 function checkDropCollisions() {
@@ -461,6 +503,7 @@ function checkDropCollisions() {
         collisiondetector.height = 50
         if (isColliding(player, collisiondetector)) {
             inventory.push(drop)
+            updateLocalStorage()
         }
     })
 }
