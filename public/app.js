@@ -116,6 +116,26 @@ function drawHomeScreen() {
     ctx.lineWidth = 1
     ctx.fillText("Inventory", 10 + 350 / 2, 50)
     ctx.strokeText("Inventory", 10 + 350 / 2, 50)
+
+    let stackedinventory = []
+
+    inventory.forEach(item => {
+        let existingItem = stackedinventory.find(stackeditem => stackeditem.petal === item.petal && stackeditem.rarity === item.rarity)
+        console.log(item)
+        console.log(existingItem)
+
+        if (existingItem) {
+            existingItem.quantity++
+        } else {
+            item.x = undefined
+            item.y = undefined
+            item.width = undefined
+            item.id = undefined
+            item.quantity = 1
+            stackedinventory.push(item)
+        }
+    })
+
 }
 
 canvas.addEventListener("click", (event) => {
@@ -123,8 +143,8 @@ canvas.addEventListener("click", (event) => {
         if (gameStarted == false) {
             player.x = wallthickness * 512 - 256 + playersidelength / 2 + rand(0, 512 - playersidelength / 2)
             player.y = wallthickness * 512 - 256 + playersidelength / 2 + rand(0, playingheight * 512 - playersidelength / 2)
-            // socket = new WebSocket("ws://localhost:3000")
-            socket = new WebSocket("wss://wollio-multiplayer-production.up.railway.app")
+            socket = new WebSocket("ws://localhost:3000")
+            // socket = new WebSocket("wss://wollio-multiplayer-production.up.railway.app")
             socket.addEventListener("open", () => {
                 player.id = Math.random().toString(36).substring(2, 12)
 
@@ -347,6 +367,7 @@ function playerLoop() {
     if (player.health <= 0) {
         socket.close()
         gameStarted = false
+        drawHomeScreen()
     }
     else {
         const message = {
